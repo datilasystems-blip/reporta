@@ -1,0 +1,33 @@
+name: REPORTA Windows installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        app: [user, admin, officer]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Install workspace deps
+        run: npm install --no-audit --no-fund
+
+      - name: Build web bundle (${{ matrix.app }})
+        run: npm run build --workspace @reporta/${{ matrix.app }}
+
+      - name: Build Windows installer
+        run: node scripts/build-windows.mjs --app=${{ matrix.app }} --nsis
+        shell: bash
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: REPORTA-${{ matrix.app }}-windows
+          path: release/windows/${{ matrix.app }}/*

@@ -1,0 +1,11 @@
+{
+    "appId":  "gh.gov.reporta.officer",
+    "webDir":  "www",
+    "appName":  "REPORTA Officer",
+    "server":  {
+                   "androidScheme":  "https"
+               },
+    "android":  {
+                    "allowMixedContent":  false
+                }
+}

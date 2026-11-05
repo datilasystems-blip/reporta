@@ -1,0 +1,38 @@
+{
+  "name": "reporta",
+  "version": "1.0.0",
+  "private": true,
+  "description": "REPORTA — Production Crime Reporting & Response Platform by Datila for Ghana MoGCSP",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev": "npm run dev --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "dev:api": "npm run dev --workspace=@reporta/api",
+    "dev:web": "npm run dev --workspace=@reporta/web",
+    "dev:admin": "npm run dev --workspace=@reporta/admin",
+    "dev:officer": "npm run dev --workspace=@reporta/officer",
+    "db:generate": "npm run db:generate --workspace=@reporta/database",
+    "db:push": "npm run db:push --workspace=@reporta/database",
+    "db:seed:admin": "node apps/api/scripts/seed-admin.mjs",
+    "build:web": "npm run build --workspace=@reporta/web",
+    "build:admin": "npm run build --workspace=@reporta/admin",
+    "build:officer": "npm run build --workspace=@reporta/officer",
+    "theme:package": "node scripts/package-wordpress.mjs",
+    "android:build": "node scripts/build-android.mjs",
+    "windows:build": "node scripts/build-windows.mjs",
+    "visual:check": "node scripts/visual-check.mjs"
+  },
+  "author": "DATILA",
+  "license": "Proprietary",
+  "type": "commonjs",
+  "allowScripts": {},
+  "dependencies": {
+    "bcryptjs": "^2.4.3"
+  }
+}

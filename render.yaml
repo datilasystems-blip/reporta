@@ -1,0 +1,75 @@
+services:
+  - type: web
+    name: reporta-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run db:generate --workspace=@reporta/database && npm run build --workspace=@reporta/api
+    startCommand: node apps/api/dist/index.js
+    preDeployCommand: npm run db:push --workspace=@reporta/database
+    healthCheckPath: /health
+    disk:
+      name: reporta-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:/var/data/reporta.db
+      - key: EVIDENCE_DIR
+        value: /var/data/evidence-vault
+      - key: FRONTEND_URL
+        value: https://reporta-web.onrender.com,https://reporta-admin.onrender.com,https://reporta-officer.onrender.com
+      - key: PUBLIC_WEB_URL
+        value: https://reporta-web.onrender.com
+      - key: PUBLIC_ADMIN_URL
+        value: https://reporta-admin.onrender.com
+      - key: PUBLIC_OFFICER_URL
+        value: https://reporta-officer.onrender.com
+      - key: API_PUBLIC_URL
+        value: https://reporta-api.onrender.com
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: EMAIL_MODE
+        value: log
+
+  - type: web
+    name: reporta-web
+    runtime: static
+    buildCommand: npm ci && npm run build:web
+    staticPublishPath: apps/web/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://reporta-api.onrender.com
+
+  - type: web
+    name: reporta-admin
+    runtime: static
+    buildCommand: npm ci && npm run build:admin
+    staticPublishPath: apps/admin/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://reporta-api.onrender.com
+
+  - type: web
+    name: reporta-officer
+    runtime: static
+    buildCommand: npm ci && npm run build:officer
+    staticPublishPath: apps/officer/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://reporta-api.onrender.com

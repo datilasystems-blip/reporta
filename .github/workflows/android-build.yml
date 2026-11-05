@@ -1,0 +1,36 @@
+name: REPORTA Android builds
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [user, admin, officer]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+
+      - name: Install workspace deps
+        run: npm install --no-audit --no-fund
+
+      - name: Build web bundle (${{ matrix.app }})
+        run: npm run build --workspace @reporta/${{ matrix.app }}
+
+      - name: Scaffold & sync Capacitor project
+        run: node scripts/build-android.mjs --app=${{ matrix.app }}
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: REPORTA-${{ matrix.app }}-apk
+          path: release/android/${{ matrix.app }}/*.apk

@@ -1,0 +1,412 @@
+// ============================================================
+// REPORTA — Crime Reporting & Response Platform
+// Prisma schema (SQLite for shared hosting; portable to Postgres)
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------
+// Roles:
+//   super_admin  — full control incl. officer mgmt + settings
+//   admin        — case management + officer management
+//   reviewer     — review, triage, assign, notes, status
+//   officer      — assigned cases only
+//   auditor      — read-only across cases + audit logs
+// ------------------------------------------------------------
+model User {
+  id                 String    @id @default(uuid())
+  email              String    @unique
+  name               String
+  // Reporter profile fields (optional; anonymous reporters have no User row)
+  phone              String?
+  region             String?
+  // Auth
+  passwordHash       String?
+  googleId           String?   @unique
+  avatarUrl          String?
+  // Access control
+  role               String    @default("reporter") // reporter | officer | reviewer | admin | super_admin | auditor
+  staffOffice        String? // office/region label for staff accounts
+  staffCode          String?   @unique // unique officer identifier e.g. OFF-GA-014
+  status             String    @default("active") // active | invited | suspended | deactivated
+  mustChangePassword Boolean   @default(false)
+  twoFactorEnabled   Boolean   @default(false)
+  twoFactorSecret    String?
+  lastLoginAt        DateTime?
+  // Notifications prefs
+  emailNotifications Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  reports           Report[]             @relation("ReporterReports")
+  assignments       CaseAssignment[]     @relation("AssignedOfficer")
+  assignmentHistory CaseAssignment[]     @relation("AssignedByHistory")
+  caseUpdates       CaseUpdate[]         @relation("UpdateAuthor")
+  internalNotes     InternalNote[]       @relation("NoteAuthor")
+  statusChanges     CaseStatusChange[]   @relation("StatusActor")
+  auditEvents       AuditEvent[]
+  notifications     Notification[]       @relation("NotificationUser")
+  invitationsSent   OfficerInvitation[]  @relation("InvitedBy")
+  oauthIdentities   OAuthIdentity[]
+  refreshTokens     RefreshToken[]
+  passwordResets    PasswordResetToken[]
+  handoversFrom     CaseHandover[]       @relation("HandoverFrom")
+  handoversTo       CaseHandover[]       @relation("HandoverTo")
+
+  @@index([role])
+  @@index([status])
+}
+
+model OAuthIdentity {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  provider    String   @default("google")
+  providerUid String
+  email       String
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUid])
+  @@index([email])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  userAgent String?
+  ipHash    String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ------------------------------------------------------------
+// Reports & evidence
+// ------------------------------------------------------------
+model Report {
+  id                String    @id @default(uuid())
+  reference         String    @unique // public reference e.g. RPT-7K3M-9Q2X
+  trackingCode      String?   @unique // private credential for anonymous reporters
+  // Classification — plain-language category, not legal code
+  category          String
+  description       String
+  incidentDate      DateTime?
+  incidentTime      String? // approximate time, free text allowed
+  region            String?
+  town              String?
+  landmark          String?
+  reporterName      String?
+  reporterEmail     String?
+  reporterPhone     String?
+  ongoing           Boolean   @default(false) // incident ongoing / urgent
+  urgency           String    @default("normal") // low | normal | urgent | emergency
+  // Perpetrator / witness info (voluntary)
+  perpetratorKnown  Boolean   @default(false)
+  perpetratorName   String?
+  perpetratorDesc   String?
+  witnessInfo       String?
+  // Reporter identity
+  isAnonymous       Boolean   @default(false)
+  reporterUserId    String? // null for anonymous reports
+  safeContactMethod String    @default("in_app") // in_app | phone | email | none
+  // Workflow state
+  status            String    @default("received")
+  // received | review | awaiting_reporter_input | assigned | investigation |
+  // closed | rejected
+  publicStatus      String?
+  resolvedAt        DateTime?
+  resolutionDays    Int?
+  infoRequestId     String?
+  priority          String    @default("normal") // low | normal | high | critical
+  assignedOffice    String?
+  caseId            String    @unique // internal case identifier CASE-YYYY-NNNNN
+  // Notifications
+  notified          Boolean   @default(false)
+  acknowledgedAt    DateTime?
+  acknowledgedById  String?
+  contactName       String?
+  contactPhone      String?
+  contactEmail      String?
+  // housekeeping
+  ipHash            String? // hashed reporter IP for abuse prevention, never raw
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  closedAt          DateTime?
+  closeReason       String?
+
+  reporterUser  User?              @relation("ReporterReports", fields: [reporterUserId], references: [id])
+  evidence      Evidence[]
+  assignments   CaseAssignment[]
+  statusHistory CaseStatusChange[]
+  internalNotes InternalNote[]
+  updates       CaseUpdate[]
+  notifications Notification[]
+  escalations   Escalation[]
+  handovers     CaseHandover[]
+  infoRequest   InfoRequest?
+
+  @@index([status])
+  @@index([category])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([reporterUserId])
+}
+
+model Evidence {
+  id             String   @id @default(uuid())
+  reportId       String
+  kind           String // photo | video | audio | document
+  // Storage: private dir outside webroot, randomized filename
+  storageKey     String   @unique // randomized relative path within evidence vault
+  originalName   String // client-supplied name, sanitized
+  mimeType       String
+  sizeBytes      Int
+  durationSec    Float? // audio/video duration when known
+  checksumSha256 String
+  // Scan state: pending | clean | quarantined | unavailable
+  scanStatus     String   @default("pending")
+  scanDetail     String?
+  uploadedBy     String? // user id when authenticated; anonymous otherwise
+  createdAt      DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([kind])
+}
+
+// ------------------------------------------------------------
+// Case workflow
+// ------------------------------------------------------------
+model CaseAssignment {
+  id             String    @id @default(uuid())
+  reportId       String
+  officerId      String
+  assignedById   String
+  note           String?
+  // active | superseded | retracted
+  state          String    @default("active")
+  acknowledgedAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  report     Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  officer    User   @relation("AssignedOfficer", fields: [officerId], references: [id])
+  assignedBy User   @relation("AssignedByHistory", fields: [assignedById], references: [id])
+
+  @@index([reportId])
+  @@index([officerId])
+  @@index([state])
+}
+
+model CaseStatusChange {
+  id          String   @id @default(uuid())
+  reportId    String
+  fromStatus  String
+  toStatus    String
+  actorId     String? // null for system events
+  actorRole   String?
+  reason      String?
+  visibility  String   @default("internal") // internal | public
+  publicLabel String? // approved text shown on public timeline
+  createdAt   DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  actor  User?  @relation("StatusActor", fields: [actorId], references: [id])
+
+  @@index([reportId])
+  @@index([createdAt])
+}
+
+model CaseUpdate {
+  id         String   @id @default(uuid())
+  reportId   String
+  authorId   String
+  authorRole String
+  kind       String // progress | finding | recommendation | info_provided
+  body       String
+  visibility String   @default("internal") // internal | public
+  createdAt  DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  author User   @relation("UpdateAuthor", fields: [authorId], references: [id])
+
+  @@index([reportId])
+  @@index([authorId])
+}
+
+model InternalNote {
+  id         String   @id @default(uuid())
+  reportId   String
+  authorId   String
+  authorRole String?
+  body       String
+  createdAt  DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  author User   @relation("NoteAuthor", fields: [authorId], references: [id])
+
+  @@index([reportId])
+}
+
+model CaseHandover {
+  id            String   @id @default(uuid())
+  reportId      String
+  fromOfficerId String?
+  toOfficerId   String
+  reason        String
+  createdAt     DateTime @default(now())
+
+  report      Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  fromOfficer User?  @relation("HandoverFrom", fields: [fromOfficerId], references: [id])
+  toOfficer   User   @relation("HandoverTo", fields: [toOfficerId], references: [id])
+}
+
+model Escalation {
+  id         String    @id @default(uuid())
+  reportId   String
+  kind       String // urgent | conflict_of_interest | unable_to_handle | risk
+  note       String?
+  raisedById String?
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+}
+
+model InfoRequest {
+  id            String    @id @default(uuid())
+  reportId      String    @unique
+  message       String
+  response      String?
+  respondedAt   DateTime?
+  requestedById String?
+  createdAt     DateTime  @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+}
+
+// ------------------------------------------------------------
+// Staff onboarding (officer accounts)
+// ------------------------------------------------------------
+model OfficerInvitation {
+  id          String    @id @default(uuid())
+  email       String
+  name        String
+  role        String // officer | reviewer | admin
+  office      String?
+  staffCode   String?
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  invitedById String
+  createdAt   DateTime  @default(now())
+
+  invitedBy User @relation("InvitedBy", fields: [invitedById], references: [id])
+
+  @@index([email])
+}
+
+// ------------------------------------------------------------
+// Notifications (durable queue)
+// ------------------------------------------------------------
+model Notification {
+  id             String    @id @default(uuid())
+  userId         String? // in-app recipient
+  reportId       String?
+  channel        String    @default("in_app") // in_app | email
+  kind           String // report_received | case_assigned | assignment_ack | update | info_request | escalation | closed
+  title          String
+  body           String
+  linkPath       String?
+  // pending | sent | delivered | failed
+  status         String    @default("pending")
+  attempts       Int       @default(0)
+  lastError      String?
+  deliveredAt    DateTime?
+  readAt         DateTime?
+  idempotencyKey String?   @unique
+  createdAt      DateTime  @default(now())
+
+  user   User?   @relation("NotificationUser", fields: [userId], references: [id])
+  report Report? @relation(fields: [reportId], references: [id])
+
+  @@index([userId, status])
+  @@index([kind])
+  @@index([reportId])
+}
+
+// ------------------------------------------------------------
+// Audit trail — append only
+// ------------------------------------------------------------
+model AuditEvent {
+  id         String   @id @default(uuid())
+  actorId    String?
+  actorRole  String?
+  action     String
+  targetType String?
+  targetId   String?
+  detail     String? // JSON, redacted
+  ipHash     String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
+// ------------------------------------------------------------
+// Sessions & rate limiting (persistent, multi-instance safe)
+// ------------------------------------------------------------
+model RateLimitHit {
+  id          String   @id @default(uuid())
+  key         String
+  windowStart DateTime
+  count       Int      @default(0)
+
+  @@unique([key, windowStart])
+  @@index([key])
+}
+
+model SystemSetting {
+  key       String   @id
+  value     String // JSON encoded
+  updatedAt DateTime @updatedAt
+}
+
+// ------------------------------------------------------------
+// Password reset tokens (REPORTA staff + reporters)
+// ------------------------------------------------------------
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

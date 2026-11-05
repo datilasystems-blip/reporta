@@ -1,0 +1,122 @@
+/*
+Theme Name: REPORTA by Datila
+Theme URI: https://datila.org
+Author: DATILA
+Author URI: https://datila.org
+Description: Official REPORTA theme for Ghana's crime-reporting platform — serves the compiled REPORTA React application and connects to the same backend API as the Android and Windows apps. Tagline: Speak up. Report safely. Get support.
+Version: 1.0.0
+Requires at least: 5.9
+Tested up to: 6.7
+Requires PHP: 7.4
+License: Proprietary
+Text Domain: reporta
+*/
+
+:root {
+  --reporta-purple: #5b2d8e;
+  --reporta-purple-deep: #2a1544;
+  --reporta-teal: #0f9b8e;
+  --reporta-gold: #f2b722;
+  --reporta-page: #f6f7fb;
+  --reporta-ink: #1f2430;
+  --reporta-muted: #64748b;
+  --reporta-line: #e4e9f2;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--reporta-page);
+  color: var(--reporta-ink);
+  line-height: 1.65;
+}
+
+img { max-width: 100%; height: auto; }
+
+.screen-reader-text {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(1px, 1px, 1px, 1px);
+}
+
+.skip-link:focus {
+  position: fixed; top: 8px; left: 8px;
+  clip: auto; width: auto; height: auto; z-index: 100000;
+  background: var(--reporta-gold); color: var(--reporta-purple-deep);
+  padding: 10px 16px; border-radius: 6px; font-weight: 600;
+}
+
+.site-header {
+  background: var(--reporta-purple-deep);
+  position: sticky; top: 0; z-index: 40;
+}
+
+.site-header .container {
+  max-width: 1180px; margin: 0 auto; padding: 14px 20px;
+  display: flex; align-items: center; gap: 12px;
+}
+
+.brand { display: flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; }
+.brand img { height: 40px; width: auto; }
+
+.brand-text .site-title {
+  font-weight: 900; letter-spacing: .04em; font-size: 20px; color: #fff; display: block;
+}
+.brand-text .site-title .accent { color: var(--reporta-gold); }
+.brand-text .site-description { font-size: 11px; color: rgba(255,255,255,.6); display: block; }
+
+.main-navigation ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; flex-wrap: wrap; }
+.main-navigation a {
+  color: #fff; text-decoration: none; font-weight: 600; font-size: 13.5px;
+  padding: 8px 13px; border-radius: 8px; display: inline-block;
+}
+.main-navigation a:hover,
+.main-navigation .current-menu-item > a { background: rgba(255,255,255,.16); }
+
+.btn {
+  display: inline-block; padding: 13px 26px; border-radius: 12px;
+  font-weight: 700; font-size: 15px; text-decoration: none; border: none; cursor: pointer;
+  transition: transform .1s ease;
+}
+.btn-primary { background: var(--reporta-purple); color: #fff; }
+.btn-teal { background: var(--reporta-teal); color: #fff; }
+.btn-gold { background: var(--reporta-gold); color: var(--reporta-purple-deep); }
+.btn-ghost { background: #fff; color: var(--reporta-ink); border: 1px solid var(--reporta-line); }
+.btn:active { transform: scale(.98); }
+
+.hero {
+  background: linear-gradient(135deg, var(--reporta-purple-deep) 0%, var(--reporta-purple) 55%, #7a3fb8 100%);
+  color: #fff; text-align: center; padding: 72px 20px 84px; position: relative; overflow: hidden;
+}
+.hero::after {
+  content: ""; position: absolute; right: -120px; top: -120px;
+  width: 340px; height: 340px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(242,183,34,.28), transparent 70%);
+}
+.hero h1 { font-size: clamp(2rem, 5vw, 3rem); margin: 0 0 10px; line-height: 1.15; }
+.hero .accent { color: var(--reporta-gold); }
+.hero p { font-size: 1.1rem; max-width: 640px; margin: 0 auto 26px; color: #e6dcf5; }
+
+.site-main { padding: 0; }
+
+.card {
+  background: #fff; border-radius: 16px; padding: 22px;
+  border: 1px solid var(--reporta-line);
+  box-shadow: 0 2px 12px rgba(43,21,68,.06);
+}
+
+.card-grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+
+.site-footer { background: var(--reporta-purple-deep); color: rgba(255,255,255,.75); }
+.site-footer .container { max-width: 1180px; margin: 0 auto; padding: 36px 20px; }
+.site-footer h3 { color: var(--reporta-gold); font-size: 13px; letter-spacing: .05em; }
+.site-footer a { color: rgba(255,255,255,.75); }
+.footer-note { border-top: 1px solid rgba(255,255,255,.12); text-align: center; padding: 14px; font-size: 12px; color: rgba(255,255,255,.45); }
+
+@media (max-width: 768px) {
+  .site-header .container { flex-wrap: wrap; }
+  .main-navigation { width: 100%; order: 3; }
+}

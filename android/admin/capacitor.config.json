@@ -1,0 +1,11 @@
+{
+    "appId":  "gh.gov.reporta.admin",
+    "webDir":  "www",
+    "appName":  "REPORTA Admin",
+    "server":  {
+                   "androidScheme":  "https"
+               },
+    "android":  {
+                    "allowMixedContent":  false
+                }
+}
