@@ -116,7 +116,12 @@ function ForcePasswordChange({ me, onDone }: { me: Me; onDone: (m: Me) => void }
               const r = await api.get("/api/auth/me");
               onDone(r.data.user);
             } catch (e: any) {
-              setErr(e.response?.data?.message ?? "Failed to change password.");
+              setErr(
+  e.response?.data?.message ||
+  e.response?.data?.error ||
+  e.message ||
+  "Failed to change password."
+);
             }
           }}
           disabled={next.length < 10}
